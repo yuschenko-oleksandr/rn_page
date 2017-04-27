@@ -1,0 +1,87 @@
+<?php
+
+const PAGER_COUNT = 50;
+
+/**
+ * Implements hook_help().
+ */
+function rn_page_help($path, $arg) {
+  $operations = array(
+    array(
+      'title'=> t('Users table'),
+      'href' => 'drupal-test-task'
+    ),
+    array(
+      'title'=> t('Users views'),
+      'href' => 'drupal-test-task-views'
+    ),
+  );
+  switch ($path) {
+    // Main module help
+    case 'admin/help#rn_page':
+      return 'Module menu: ' . theme('links', array(
+        'links' => $operations,
+        'attributes' => array('class' => array('links', 'inline')),
+      ));
+  }
+}
+
+/**
+ * Implements hook_menu().
+ */
+function rn_page_menu() {
+  $items = array();
+
+  $items['drupal-test-task'] = array(
+    'title' => 'Users table',
+    'page callback' => 'rn_page_users_table',
+    'access arguments' => array('administer users'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  return $items;
+}
+
+/**
+ * Menu callback for drupal-test-task.
+ */
+function rn_page_users_table() {
+  $header = array(
+    array('data' => t('ID'), 'field' => 'uid'),
+    array('data' => t('Username'), 'field' => 'name'),
+    array('data' => t('Actions')),
+  );
+
+  $query = db_select('users', 'u');
+  $query->fields('u', array('uid', 'name'));
+  $query->condition('u.uid', 0, '!=');
+  $query = $query->extend('TableSort');
+  $query->orderByHeader($header);
+  $query = $query->extend('PagerDefault');
+  $query->limit(PAGER_COUNT);
+  $users = $query->execute()->fetchAll();
+
+  $rows = array();
+  foreach ($users as $user) {
+    $rows[] = array(
+      $user->uid,
+      $user->name,
+      l(t('edit'), 'user/' . $user->uid . '/edit'),
+    );
+  }
+
+  $output = theme('table', array(
+      'header' => $header,
+      'rows' => $rows,
+      'sticky' => FALSE,
+      'empty' => t('No results.'),
+    )
+  );
+
+  $output .= theme('pager', array(
+      'tags' => array()
+    )
+  );
+
+  return $output;
+}
